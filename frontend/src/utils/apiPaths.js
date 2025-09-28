@@ -1,4 +1,5 @@
-export const BASE_URL = import.meta.env.VITE_API_URL;
+// frontend/src/apiPaths.js
+export const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 export const API_PATHS = {
   AUTH: {
@@ -17,7 +18,7 @@ export const API_PATHS = {
   },
 
   SESSION: {
-    CREATE: "/api/sessions/create", // Create a new interview session with questions
+    CREATE: "/api/sessions/create", // Create a   new interview session with questions
     GET_ALL: "/api/sessions/my-sessions", //  Get all user sessions
     GET_ONE: (id) => `/api/sessions/${id}`, // Get session details with questions
     DELETE: (id) => `/api/sessions/${id}`, // Delete a session
