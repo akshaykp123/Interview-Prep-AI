@@ -17,12 +17,13 @@ const LandingPage = () => {
   const [openAuthModal, setOpenAuthModal] = useState(false);
   const [currentPage, setCurrentPage] = useState("login");
 
-  // Automatically close modal if user becomes authenticated
+  // Automatically redirect already logged-in users straight to the dashboard
   React.useEffect(() => {
     if (!loading && user) {
       setOpenAuthModal(false);
+      navigate("/dashboard", { replace: true });
     }
-  }, [loading, user]);
+  }, [loading, user, navigate]);
 
   const handleCTA = () => {
     if (loading) return;

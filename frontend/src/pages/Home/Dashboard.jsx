@@ -12,11 +12,14 @@ import Modal from "../../components/Modal";
 import CreateSessionForm from "./CreateSessionForm";
 import DeleteAlertContent from "../../components/DeleteAlertContent";
 
+import SpinnerLoader from "../../components/Loader/SpinnerLoader";
+
 const Dashboard = () => {
   const navigate = useNavigate();
 
   const [openCreateModal, setOpenCreateModal] = useState(false);
   const [sessions, setSessions] = useState([]);
+  const [isLoadingSessions, setIsLoadingSessions] = useState(true);
 
   const [openDeleteAlert, setOpenDeleteAlert] = useState({
     open: false,
@@ -29,6 +32,8 @@ const Dashboard = () => {
       setSessions(response.data);
     } catch (error) {
       console.error("Error fetching session data:", error);
+    } finally {
+      setIsLoadingSessions(false);
     }
   };
 
@@ -55,7 +60,12 @@ const Dashboard = () => {
     <DashboardLayout>
       <div className="container mx-auto pl-3 pt-4 pb-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-7 pt-1 pb-6 px-4 md:px-0">
-          {sessions?.length > 0 ? (
+          {isLoadingSessions ? (
+            <div className="col-span-full flex flex-col items-center justify-center h-[50vh] gap-3 text-gray-400">
+              <SpinnerLoader />
+              <p className="text-sm font-medium">Loading your sessions...</p>
+            </div>
+          ) : sessions?.length > 0 ? (
             sessions.map((data, index) => (
               <SummaryCard
                 key={data?._id}
@@ -82,7 +92,6 @@ const Dashboard = () => {
               </p>
             </div>
           )}
-
         </div>
 
         <button

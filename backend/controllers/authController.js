@@ -64,10 +64,15 @@ const loginUser = async (req, res) => {
 
     const normalizedEmail = email.toLowerCase().trim();
 
-    // Case-insensitive email search to match existing or newly created users
-    const user = await User.findOne({
-      email: { $regex: new RegExp(`^${normalizedEmail}$`, "i") },
-    });
+    // Fast indexed lookup first (O(1) index scan, instant <1ms)
+    let user = await User.findOne({ email: normalizedEmail });
+
+    // Fallback for legacy accounts registered with mixed casing
+    if (!user) {
+      user = await User.findOne({
+        email: { $regex: new RegExp(`^${normalizedEmail}$`, "i") },
+      });
+    }
 
     if (!user) {
       return res.status(400).json({ message: "Invalid email or password" });

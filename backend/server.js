@@ -63,4 +63,20 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Start Server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+
+  // Keep-alive pinger for free hosting (e.g. Render 15-minute spin-down prevention)
+  const SERVER_URL = process.env.SERVER_URL || process.env.RENDER_EXTERNAL_URL;
+  if (SERVER_URL) {
+    const PING_INTERVAL = 14 * 60 * 1000; // 14 minutes
+    setInterval(async () => {
+      try {
+        await fetch(`${SERVER_URL}/api/health`);
+        console.log(`[KeepAlive] Pinged ${SERVER_URL}/api/health`);
+      } catch (err) {
+        console.error(`[KeepAlive] Ping error:`, err.message);
+      }
+    }, PING_INTERVAL);
+  }
+});
