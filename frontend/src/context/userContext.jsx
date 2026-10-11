@@ -35,13 +35,16 @@ const UserProvider = ({ children }) => {
 
   const updateUser = (userData) => {
     setUser(userData);
-    localStorage.setItem("token", userData.token); // Save token
+    if (userData?.token) {
+      localStorage.setItem("token", userData.token);
+    }
     setLoading(false);
   };
 
   const clearUser = () => {
     setUser(null);
     localStorage.removeItem("token");
+    setLoading(false);
   };
 
   return (

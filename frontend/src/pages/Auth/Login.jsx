@@ -6,10 +6,14 @@ import axiosInstance from "../../utils/axiosInstance";
 import { API_PATHS } from "../../utils/apiPaths";
 import { UserContext } from "../../context/userContext";
 import { toast } from "react-hot-toast";
-const Login = ({ setCurrentPage }) => {
+import SpinnerLoader from "../../components/Loader/SpinnerLoader";
+
+const Login = ({ setCurrentPage, onSuccess }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isWakingUp, setIsWakingUp] = useState(false);
 
   const { updateUser } = useContext(UserContext);
 
@@ -19,7 +23,9 @@ const Login = ({ setCurrentPage }) => {
   const handleLogin = async (e) => {
     e.preventDefault();
 
-    if (!validateEmail(email)) {
+    const cleanEmail = email.trim();
+
+    if (!validateEmail(cleanEmail)) {
       setError("Please enter a valid email address.");
       return;
     }
@@ -30,29 +36,44 @@ const Login = ({ setCurrentPage }) => {
     }
 
     setError("");
+    setIsLoading(true);
 
-    //Login API Call
+    // If server takes longer than 3 seconds (cold start on free host like Render), inform user
+    const wakeupTimer = setTimeout(() => {
+      setIsWakingUp(true);
+    }, 3000);
+
+    // Login API Call
     try {
       const response = await axiosInstance.post(API_PATHS.AUTH.LOGIN, {
-        email,
+        email: cleanEmail,
         password,
       });
+
+      clearTimeout(wakeupTimer);
+      setIsWakingUp(false);
 
       const { token } = response.data;
 
       if (token) {
         localStorage.setItem("token", token);
-        updateUser(response.data)
-        
+        updateUser(response.data);
+        if (onSuccess) onSuccess();
         navigate("/dashboard");
         toast.success("Login successful 🎉");
       }
     } catch (error) {
-      if (error.response && error.response.data.message) {
+      clearTimeout(wakeupTimer);
+      setIsWakingUp(false);
+      if (error.response && error.response.data && error.response.data.message) {
         setError(error.response.data.message);
+      } else if (error.code === "ECONNABORTED") {
+        setError("Request timed out. The server might be waking up, please try again.");
       } else {
         setError("Something went wrong. Please try again.");
       }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -82,13 +103,31 @@ const Login = ({ setCurrentPage }) => {
 
         {error && <p className="text-red-500 text-xs pb-2.5">{error}</p>}
 
-        <button type="submit" className="btn-primary">
-          LOGIN
+        <button
+          type="submit"
+          disabled={isLoading}
+          className="btn-primary flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {isLoading ? (
+            <>
+              <SpinnerLoader />
+              <span>Logging in...</span>
+            </>
+          ) : (
+            "LOGIN"
+          )}
         </button>
+
+        {isWakingUp && (
+          <p className="text-amber-600 text-xs text-center mt-2 animate-pulse">
+            Connecting to server (waking up, please wait)...
+          </p>
+        )}
 
         <p className="text-[13px] text-slate-800 mt-3">
           Don’t have an account?{" "}
           <button
+            type="button"
             className="font-medium text-primary underline cursor-pointer"
             onClick={() => {
               setCurrentPage("signup");

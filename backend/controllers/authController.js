@@ -14,8 +14,14 @@ const registerUser = async (req, res) => {
   try {
     const { name, email, password, profileImageUrl } = req.body;
 
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: "Please provide all required fields" });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+
     // Check if user already exists
-    const userExists = await User.findOne({ email });
+    const userExists = await User.findOne({ email: normalizedEmail });
     if (userExists) {
       return res.status(400).json({ message: "User already exists" });
     }
@@ -26,10 +32,10 @@ const registerUser = async (req, res) => {
 
     // Create new user
     const user = await User.create({
-      name,
-      email,
+      name: name.trim(),
+      email: normalizedEmail,
       password: hashedPassword,
-      profileImageUrl,
+      profileImageUrl: profileImageUrl || null,
     });
 
     // Return user data with JWT
@@ -52,15 +58,25 @@ const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const user = await User.findOne({ email });
+    if (!email || !password) {
+      return res.status(400).json({ message: "Please provide email and password" });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Case-insensitive email search to match existing or newly created users
+    const user = await User.findOne({
+      email: { $regex: new RegExp(`^${normalizedEmail}$`, "i") },
+    });
+
     if (!user) {
-      return res.status(500).json({ message: "Invalid email or password" });
+      return res.status(400).json({ message: "Invalid email or password" });
     }
 
     // Compare password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(500).json({ message: "Invalid email or password" });
+      return res.status(400).json({ message: "Invalid email or password" });
     }
 
     // Return user data with JWT

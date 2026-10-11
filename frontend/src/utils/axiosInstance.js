@@ -39,8 +39,21 @@ axiosInstance.interceptors.response.use(
     // Handle common errors globally
     if (error.response) {
       if (error.response.status === 401) {
-        // Redirect to login page
-        window.location.href = "/";
+        // Do NOT redirect or reload the page if the 401 was from login or register
+        const requestUrl = error.config?.url || "";
+        const isAuthRequest =
+          requestUrl.includes("/api/auth/login") ||
+          requestUrl.includes("/api/auth/register");
+
+        if (!isAuthRequest) {
+          // Stale / expired token: clear it so userContext doesn't loop
+          localStorage.removeItem("token");
+
+          // Only redirect if not already on the landing page
+          if (window.location.pathname !== "/") {
+            window.location.href = "/";
+          }
+        }
       } else if (error.response.status === 500) {
         console.error("Server error. Please try again later.");
       }

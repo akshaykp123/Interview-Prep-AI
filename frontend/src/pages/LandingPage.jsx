@@ -11,13 +11,21 @@ import { UserContext } from "../context/userContext";
 import ProfileInfoCard from "../components/Cards/ProfileInfoCard";
 
 const LandingPage = () => {
-  const { user } = useContext(UserContext);
+  const { user, loading } = useContext(UserContext);
   const navigate = useNavigate();
 
   const [openAuthModal, setOpenAuthModal] = useState(false);
   const [currentPage, setCurrentPage] = useState("login");
 
+  // Automatically close modal if user becomes authenticated
+  React.useEffect(() => {
+    if (!loading && user) {
+      setOpenAuthModal(false);
+    }
+  }, [loading, user]);
+
   const handleCTA = () => {
+    if (loading) return;
     if (!user) {
       setOpenAuthModal(true);
     } else {
@@ -35,11 +43,13 @@ const LandingPage = () => {
           {/* Header */}
           <header className="flex justify-between items-center mb-16 flex-wrap">
             <div className="text-xl text-black font-bold">Interview Prep AI</div>
-            {user ? (
+            {loading ? (
+              <div className="h-10 w-28" />
+            ) : user ? (
               <ProfileInfoCard />
             ) : (
               <button
-                className="bg-gradient-to-r from-[#FF9324] to-[#e99a4b] text-sm font-semibold text-white px-6 py-2.5 rounded-full hover:bg-black hover:text-white border border-white transition-colors mt-3 md:mt-0"
+                className="bg-gradient-to-r from-[#FF9324] to-[#e99a4b] text-sm font-semibold text-white px-6 py-2.5 rounded-full hover:bg-black hover:text-white border border-white transition-colors mt-3 md:mt-0 cursor-pointer"
                 onClick={() => setOpenAuthModal(true)}
               >
                 Login / Sign Up
@@ -143,9 +153,17 @@ const LandingPage = () => {
         hideHeader
       >
         <div>
-          {currentPage === "login" && <Login setCurrentPage={setCurrentPage} />}
+          {currentPage === "login" && (
+            <Login
+              setCurrentPage={setCurrentPage}
+              onSuccess={() => setOpenAuthModal(false)}
+            />
+          )}
           {currentPage === "signup" && (
-            <SignUp setCurrentPage={setCurrentPage} />
+            <SignUp
+              setCurrentPage={setCurrentPage}
+              onSuccess={() => setOpenAuthModal(false)}
+            />
           )}
         </div>
       </Modal>
