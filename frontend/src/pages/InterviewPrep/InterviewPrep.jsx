@@ -96,9 +96,9 @@ const InterviewPrep = () => {
       const aiResponse = await axiosInstance.post(
         API_PATHS.AI.GENERATE_QUESTIONS,
         {
-          role: sessionData?.role,
-          experience: sessionData?.experience,
-          topicsToFocus: sessionData?.topicsToFocus,
+          role: sessionData?.role || "Software Developer",
+          experience: sessionData?.experience ?? "1",
+          topicsToFocus: sessionData?.topicsToFocus || "Technical Interview Questions",
           numberOfQuestions: 10,
         }
       );
@@ -119,11 +119,9 @@ const InterviewPrep = () => {
         fetchSessionDetailsById();
       }
     } catch (error) {
-      if (error.response && error.response.data.message) {
-        setError(error.response.data.message);
-      } else {
-        setError("Something went wrong. Please try again.");
-      }
+      const msg = error.response?.data?.message || "Failed to load more questions. Please try again.";
+      toast.error(msg);
+      console.error("Error adding questions:", error);
     } finally {
       setIsUpdateLoader(false);
     }

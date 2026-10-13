@@ -6,6 +6,62 @@ const {
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
+// Robust JSON parser helper that safely handles markdown wrappers or extra whitespace
+const extractJson = (text) => {
+  if (!text) return null;
+  let cleaned = text.trim();
+  cleaned = cleaned.replace(/^```(?:json)?\s*/i, "");
+  cleaned = cleaned.replace(/\s*```$/i, "");
+  cleaned = cleaned.trim();
+
+  try {
+    return JSON.parse(cleaned);
+  } catch (err) {
+    const firstBracket = cleaned.indexOf("[");
+    const lastBracket = cleaned.lastIndexOf("]");
+    if (firstBracket !== -1 && lastBracket > firstBracket) {
+      try {
+        return JSON.parse(cleaned.substring(firstBracket, lastBracket + 1));
+      } catch (e) {}
+    }
+
+    const firstBrace = cleaned.indexOf("{");
+    const lastBrace = cleaned.lastIndexOf("}");
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+      try {
+        return JSON.parse(cleaned.substring(firstBrace, lastBrace + 1));
+      } catch (e) {}
+    }
+    throw err;
+  }
+};
+
+// Generates content using the active Gemini model with fallback
+const generateWithModelFallback = async (contents) => {
+  const models = [
+    process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
+    "gemini-3.8-flash",
+  ];
+
+  let lastError = null;
+  for (const model of models) {
+    try {
+      const response = await ai.models.generateContent({
+        model,
+        contents,
+        config: {
+          responseMimeType: "application/json",
+        },
+      });
+      return response.text;
+    } catch (err) {
+      console.warn(`[AI Controller] Model ${model} failed, attempting next available model:`, err.message);
+      lastError = err;
+    }
+  }
+  throw lastError;
+};
+
 // @desc    Generate interview questions and answers using Gemini
 // @route   POST /api/ai/generate-questions
 // @access  Private
@@ -13,7 +69,8 @@ const generateInterviewQuestions = async (req, res) => {
   try {
     const { role, experience, topicsToFocus, numberOfQuestions } = req.body;
 
-    if (!role || !experience || !topicsToFocus || !numberOfQuestions) {
+    const hasExperience = experience !== undefined && experience !== null && experience !== "";
+    if (!role || !hasExperience || !topicsToFocus || !numberOfQuestions) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
@@ -24,24 +81,20 @@ const generateInterviewQuestions = async (req, res) => {
       numberOfQuestions
     );
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash-lite",
-      contents: prompt,
-    });
+    const rawText = await generateWithModelFallback(prompt);
+    const parsedData = extractJson(rawText);
 
-    let rawText = response.text;
+    const questionsArray = Array.isArray(parsedData)
+      ? parsedData
+      : (parsedData?.questions || parsedData?.data || []);
 
-    // Clean it: Remove ```json and ``` from beginning and end
-    const cleanedText = rawText
-      .replace(/^```json\s*/, "") // remove starting ```json
-      .replace(/```$/, "") // remove ending ```
-      .trim(); // remove extra spaces
+    if (!Array.isArray(questionsArray) || questionsArray.length === 0) {
+      throw new Error("Invalid or empty questions returned by AI model");
+    }
 
-    // Now safe to parse
-    const data = JSON.parse(cleanedText);
-
-    res.status(200).json(data);
+    res.status(200).json(questionsArray);
   } catch (error) {
+    console.error("Error generating interview questions:", error);
     res.status(500).json({
       message: "Failed to generate questions",
       error: error.message,
@@ -61,27 +114,14 @@ const generateConceptExplanation = async (req, res) => {
     }
 
     const prompt = conceptExplainPrompt(question);
-
-    const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash-lite",
-      contents: prompt,
-    });
-
-    const rawText = response.text;
-
-    // Clean it: Remove ```json and ``` from beginning and end
-    const cleanedText = rawText
-      .replace(/^```json\s*/, "") // remove starting ```json
-      .replace(/```$/, "") // remove ending ```
-      .trim(); // remove extra spaces
-
-    // Now safe to parse
-    const data = JSON.parse(cleanedText);
+    const rawText = await generateWithModelFallback(prompt);
+    const data = extractJson(rawText);
 
     res.status(200).json(data);
   } catch (error) {
+    console.error("Error generating concept explanation:", error);
     res.status(500).json({
-      message: "Failed to generate questions",
+      message: "Failed to generate explanation",
       error: error.message,
     });
   }

@@ -30,7 +30,7 @@ const CreateSessionForm = () => {
 
     const { role, experience, topicsToFocus } = formData;
 
-    if (!role || !experience || !topicsToFocus) {
+    if (!role || experience === "" || experience === null || experience === undefined || !topicsToFocus) {
       setError("Please fill all the required fields.");
       return;
     }
