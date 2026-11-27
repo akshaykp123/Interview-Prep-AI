@@ -1,9 +1,7 @@
 const Session = require("../models/Session");
 const Question = require("../models/Question");
 
-// @desc    Create a new session and linked questions
-// @route   POST /api/sessions/create
-// @access  Private
+
 exports.createSession = async (req, res) => {
   try {
     const { role, experience, topicsToFocus, description, questions } =
